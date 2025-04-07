@@ -116,7 +116,9 @@ struct Globos: View {
                         return
                     }
                     
-                    let explosionPosition = tappedEntity.transform.translation
+                    let explosionPosition = tappedEntity.position(relativeTo: nil)
+
+
                     
                     // Reproduce el efecto de explosión
                     if let content = currentContent {
@@ -361,7 +363,7 @@ func playExplosionEffect(at position: SIMD3<Float>, in content: RealityViewConte
         content.add(particleEntity)
         
         Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            try? await Task.sleep(nanoseconds: 500_000_000)
             particleEntity.removeFromParent()
         }
     }
