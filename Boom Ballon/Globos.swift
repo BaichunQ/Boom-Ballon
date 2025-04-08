@@ -338,20 +338,13 @@ struct Globos: View {
     }
     
     func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval = 3) {
-        let task = Task {
+        Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             await MainActor.run {
-                if let balloonType = entity.components[BalloonTypeComponent.self],
-                   balloonType.type == "bomba",
-                   entity.parent != nil {
-                    if let bombStatus = entity.components[BombStatusComponent.self] as? BombStatusComponent, bombStatus.exploded == false {
-                        score -= 10
-                    }
-                }
+                // En este caso, no aplicamos ninguna penalización:
                 entity.removeFromParent()
             }
         }
-        entity.components.set(RemovalTaskComponent(task: task))
     }
 
     
@@ -387,17 +380,16 @@ struct Globos: View {
         SpatialTapGesture()
             .targetedToAnyEntity()
             .onEnded { tap in
-                // Si es necesario, busca el nodo raíz que tenga el BalloonTypeComponent.
-                // En este ejemplo usamos el entity directamente.
                 let tappedEntity = tap.entity
                 let explosionPosition = tappedEntity.position(relativeTo: nil)
-                
+
                 if let content = currentContent {
                     Task {
                         await playExplosionEffect(at: explosionPosition, in: content)
                     }
                 }
                 
+                // Verifica el tipo del globo y actualiza el puntaje
                 guard let balloonType = tappedEntity.components[BalloonTypeComponent.self] else {
                     print("El globo no tiene un tipo definido")
                     tappedEntity.removeFromParent()
@@ -410,13 +402,12 @@ struct Globos: View {
                 case "rojo":
                     score += 1
                 case "bomba":
-                    // Marca la bomba como explotada reemplazando el componente
-                    tappedEntity.components.set(BombStatusComponent(exploded: true))
+                    score = max(0, score - 10)
                 default:
                     break
                 }
                 
-                // Finalmente, eliminamos la entidad
+                // Elimina la entidad inmediatamente
                 tappedEntity.removeFromParent()
             }
     }
