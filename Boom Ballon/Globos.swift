@@ -3,6 +3,9 @@ import RealityKit
 import RealityKitContent
 import UIKit
 
+struct BombStatusComponent: Component {
+    var exploded: Bool = false
+}
 extension Entity {
     /// Aplica el componente a la entidad y a todos sus hijos de forma recursiva
     func propagate<T: Component>(component: T) {
@@ -12,13 +15,19 @@ extension Entity {
         }
     }
 }
+extension Entity {
+    /// Busca recursivamente hacia arriba (en la jerarquía) una entidad que tenga un componente BalloonTypeComponent.
+   
+}
+
+struct BalloonTypeComponent: Component {
+    var type: String
+}
 
 struct Globos: View {
     
     // Define el componente para indicar el tipo de globo (rojo, amarillo, bomba)
-    struct BalloonTypeComponent: Component {
-        var type: String
-    }
+   
     
     
     
@@ -227,10 +236,13 @@ struct Globos: View {
             balloon.generateCollisionShapes(recursive: true)
             balloon.components.set(InputTargetComponent())
             balloon.components.set(PhysicsBodyComponent(massProperties: .default,
-                                                        material: nil,
-                                                        mode: .kinematic))
+                                                         material: nil,
+                                                         mode: .kinematic))
             let typeComponent = BalloonTypeComponent(type: "bomba")
             balloon.propagate(component: typeComponent)
+            
+            // Asigna el componente de estado para bombas (por defecto exploded = false)
+            balloon.components.set(BombStatusComponent())
             
             let canonPosition = cannon.position(relativeTo: nil)
             let spawnYOffset: Float = 0.5
@@ -249,6 +261,7 @@ struct Globos: View {
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
     }
+
     
     // MARK: - Animaciones y Eliminación de Globos (Ejemplos Directos)
     
@@ -313,10 +326,19 @@ struct Globos: View {
         Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             await MainActor.run {
+                if let balloonType = entity.components[BalloonTypeComponent.self],
+                   balloonType.type == "bomba",
+                   entity.parent != nil {
+                    // Se penaliza solo si el componente de estado indica que no fue explotado.
+                    if let bombStatus = entity.components[BombStatusComponent.self] as? BombStatusComponent, bombStatus.exploded == false {
+                        score -= 10
+                    }
+                }
                 entity.removeFromParent()
             }
         }
     }
+
     
     // MARK: - Temporizador
     
@@ -348,38 +370,41 @@ struct Globos: View {
     
     private var tapGesture: some Gesture {
         SpatialTapGesture()
-                .targetedToAnyEntity()
-                .onEnded { tap in
-                    let tappedEntity = tap.entity
-                    let explosionPosition = tappedEntity.position(relativeTo: nil)
-                    
-                    // Lanza el efecto de explosión usando la entidad "Particulas"
-                    if let content = currentContent {
-                        Task {
-                            await playExplosionEffect(at: explosionPosition, in: content)
-                        }
-                    }
-                    
-                    if tappedEntity.components.has(InvulnerabilityComponent.self) {
-                        print("Entidad invulnerable, ignorando tap.")
-                        return
-                    }
-                    
-                    tappedEntity.removeFromParent()
-                    
-                    if let balloonType = tappedEntity.components[BalloonTypeComponent.self] {
-                        if balloonType.type == "amarillo" {
-                            score += 10
-                        } else if balloonType.type == "bomba" {
-                            score -= 10
-                        } else if balloonType.type == "rojo" {
-                            score += 1
-                        }
-                    } else {
-                        print("El globo no tiene un tipo definido")
+            .targetedToAnyEntity()
+            .onEnded { tap in
+                // Si es necesario, busca el nodo raíz que tenga el BalloonTypeComponent.
+                // En este ejemplo usamos el entity directamente.
+                let tappedEntity = tap.entity
+                let explosionPosition = tappedEntity.position(relativeTo: nil)
+                
+                if let content = currentContent {
+                    Task {
+                        await playExplosionEffect(at: explosionPosition, in: content)
                     }
                 }
+                
+                if let balloonType = tappedEntity.components[BalloonTypeComponent.self] {
+                    switch balloonType.type {
+                    case "amarillo":
+                        score += 3
+                    case "rojo":
+                        score += 1
+                    case "bomba":
+                        // Marca la bomba como explotada reemplazando el componente
+                        tappedEntity.components.set(BombStatusComponent(exploded: true))
+                        // No penalizamos al tocarla
+                    default:
+                        break
+                    }
+                } else {
+                    print("El globo no tiene un tipo definido")
+                }
+                
+                // Elimina la entidad inmediatamente
+                tappedEntity.removeFromParent()
+            }
     }
+
     
     func playExplosionEffect(at position: SIMD3<Float>, in content: RealityViewContent) async {
         if let particleEntity = try? await Entity.load(named: "Particulas") {

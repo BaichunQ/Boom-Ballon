@@ -8,20 +8,20 @@
 
 /* Begin PBXBuildFile section */
 		F33F43D22D9D271D00C87897 /* CANON.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F33F43D12D9D271D00C87897 /* CANON.usdz */; };
+		F34AD5012DA5092100CBEDC2 /* Bomba.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F34AD5002DA5092100CBEDC2 /* Bomba.usdz */; };
 		F34FD2522DA3E1FF00A745C8 /* Particulas.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F34FD2512DA3E1FF00A745C8 /* Particulas.usdz */; };
 		F358D7322D9BD55E00719949 /* GloboRojo.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F358D7312D9BD55E00719949 /* GloboRojo.usdz */; };
 		F35B29672D9E740F00FE3F18 /* GloboAmarillo.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F35B29662D9E740F00FE3F18 /* GloboAmarillo.usdz */; };
-		F35B296D2D9EC81100FE3F18 /* Bomba.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F35B296C2D9EC81100FE3F18 /* Bomba.usdz */; };
 		F381880E2D9A6AE000C06AE2 /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = F381880D2D9A6AE000C06AE2 /* RealityKitContent */; };
 		F381884B2D9A746D00C06AE2 /* BalloonRed.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F381884A2D9A746D00C06AE2 /* BalloonRed.usdz */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F33F43D12D9D271D00C87897 /* CANON.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = CANON.usdz; sourceTree = "<group>"; };
+		F34AD5002DA5092100CBEDC2 /* Bomba.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Bomba.usdz; sourceTree = "<group>"; };
 		F34FD2512DA3E1FF00A745C8 /* Particulas.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Particulas.usdz; sourceTree = "<group>"; };
 		F358D7312D9BD55E00719949 /* GloboRojo.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = GloboRojo.usdz; sourceTree = "<group>"; };
 		F35B29662D9E740F00FE3F18 /* GloboAmarillo.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = GloboAmarillo.usdz; sourceTree = "<group>"; };
-		F35B296C2D9EC81100FE3F18 /* Bomba.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Bomba.usdz; sourceTree = "<group>"; };
 		F38188082D9A6AE000C06AE2 /* Boom Ballon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Boom Ballon.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F381880C2D9A6AE000C06AE2 /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
 		F381884A2D9A746D00C06AE2 /* BalloonRed.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = BalloonRed.usdz; sourceTree = "<group>"; };
@@ -70,7 +70,7 @@
 				F358D7312D9BD55E00719949 /* GloboRojo.usdz */,
 				F33F43D12D9D271D00C87897 /* CANON.usdz */,
 				F35B29662D9E740F00FE3F18 /* GloboAmarillo.usdz */,
-				F35B296C2D9EC81100FE3F18 /* Bomba.usdz */,
+				F34AD5002DA5092100CBEDC2 /* Bomba.usdz */,
 				F34FD2512DA3E1FF00A745C8 /* Particulas.usdz */,
 			);
 			sourceTree = "<group>";
@@ -159,9 +159,9 @@
 				F34FD2522DA3E1FF00A745C8 /* Particulas.usdz in Resources */,
 				F358D7322D9BD55E00719949 /* GloboRojo.usdz in Resources */,
 				F33F43D22D9D271D00C87897 /* CANON.usdz in Resources */,
-				F35B296D2D9EC81100FE3F18 /* Bomba.usdz in Resources */,
 				F35B29672D9E740F00FE3F18 /* GloboAmarillo.usdz in Resources */,
 				F381884B2D9A746D00C06AE2 /* BalloonRed.usdz in Resources */,
+				F34AD5012DA5092100CBEDC2 /* Bomba.usdz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
