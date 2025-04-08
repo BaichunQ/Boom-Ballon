@@ -6,18 +6,31 @@ import UIKit
 struct BombStatusComponent: Component {
     var exploded: Bool = false
 }
+
+// Define el componente que almacenará la Task de eliminación.
+struct RemovalTaskComponent: Component {
+    var task: Task<Void, Never>
+}
+
+// Extensión a Entity para agregar la propiedad removalTask
 extension Entity {
-    /// Aplica el componente a la entidad y a todos sus hijos de forma recursiva
+    var removalTask: Task<Void, Never>? {
+        get { self.components[RemovalTaskComponent.self]?.task }
+        set {
+            if let newValue = newValue {
+                self.components.set(RemovalTaskComponent(task: newValue))
+            }
+        }
+    }
+}
+extension Entity {
+    /// Aplica el componente a la entidad y a todos sus hijos de forma recursiva.
     func propagate<T: Component>(component: T) {
         self.components.set(component)
         for child in self.children {
             child.propagate(component: component)
         }
     }
-}
-extension Entity {
-    /// Busca recursivamente hacia arriba (en la jerarquía) una entidad que tenga un componente BalloonTypeComponent.
-   
 }
 
 struct BalloonTypeComponent: Component {
@@ -84,6 +97,8 @@ struct Globos: View {
         }
         .onAppear { startCountdown() }
     }
+    
+    
     
     // MARK: - Cañones
     
@@ -323,13 +338,12 @@ struct Globos: View {
     }
     
     func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval = 3) {
-        Task {
+        let task = Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             await MainActor.run {
                 if let balloonType = entity.components[BalloonTypeComponent.self],
                    balloonType.type == "bomba",
                    entity.parent != nil {
-                    // Se penaliza solo si el componente de estado indica que no fue explotado.
                     if let bombStatus = entity.components[BombStatusComponent.self] as? BombStatusComponent, bombStatus.exploded == false {
                         score -= 10
                     }
@@ -337,6 +351,7 @@ struct Globos: View {
                 entity.removeFromParent()
             }
         }
+        entity.components.set(RemovalTaskComponent(task: task))
     }
 
     
@@ -383,28 +398,28 @@ struct Globos: View {
                     }
                 }
                 
-                if let balloonType = tappedEntity.components[BalloonTypeComponent.self] {
-                    switch balloonType.type {
-                    case "amarillo":
-                        score += 3
-                    case "rojo":
-                        score += 1
-                    case "bomba":
-                        // Marca la bomba como explotada reemplazando el componente
-                        tappedEntity.components.set(BombStatusComponent(exploded: true))
-                        // No penalizamos al tocarla
-                    default:
-                        break
-                    }
-                } else {
+                guard let balloonType = tappedEntity.components[BalloonTypeComponent.self] else {
                     print("El globo no tiene un tipo definido")
+                    tappedEntity.removeFromParent()
+                    return
                 }
                 
-                // Elimina la entidad inmediatamente
+                switch balloonType.type {
+                case "amarillo":
+                    score += 3
+                case "rojo":
+                    score += 1
+                case "bomba":
+                    // Marca la bomba como explotada reemplazando el componente
+                    tappedEntity.components.set(BombStatusComponent(exploded: true))
+                default:
+                    break
+                }
+                
+                // Finalmente, eliminamos la entidad
                 tappedEntity.removeFromParent()
             }
     }
-
     
     func playExplosionEffect(at position: SIMD3<Float>, in content: RealityViewContent) async {
         if let particleEntity = try? await Entity.load(named: "Particulas") {
