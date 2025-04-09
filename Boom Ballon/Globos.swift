@@ -381,15 +381,8 @@ struct Globos: View {
             .targetedToAnyEntity()
             .onEnded { tap in
                 let tappedEntity = tap.entity
-                let explosionPosition = tappedEntity.position(relativeTo: nil)
-
-                if let content = currentContent {
-                    Task {
-                        await playExplosionEffect(at: explosionPosition, in: content)
-                    }
-                }
                 
-                // Verifica el tipo del globo y actualiza el puntaje
+                // Se obtiene el componente tipo; en tu caso BalloonTypeComponent
                 guard let balloonType = tappedEntity.components[BalloonTypeComponent.self] else {
                     print("El globo no tiene un tipo definido")
                     tappedEntity.removeFromParent()
@@ -402,12 +395,40 @@ struct Globos: View {
                 case "rojo":
                     score += 1
                 case "bomba":
+                    // Resta 10 puntos sin bajar de 0.
                     score = max(0, score - 10)
+
+                    Task {
+                        do {
+                            let explosionEntity = try await ModelEntity.loadModel(named: "Explosion")
+                            // Posiciona la explosión en la misma ubicación que el globo explotado.
+                            explosionEntity.position = tappedEntity.position(relativeTo: nil)
+                            
+                            // Si el globo está anclado, lo agregamos a ese anchor.
+                            if let anchor = tappedEntity.anchor {
+                                anchor.addChild(explosionEntity)
+                            }
+                            // Sino, intentamos agregarlo al padre de la entidad tapada.
+                            else if let parent = tappedEntity.parent {
+                                parent.addChild(explosionEntity)
+                            }
+                            // Como última opción, lo añadimos a la propia entidad (aunque se removerá junto con ella).
+                            else {
+                                tappedEntity.addChild(explosionEntity)
+                            }
+                            
+                            // Deja visible el efecto durante 2 segundos.
+                            try await Task.sleep(nanoseconds: 2_000_000_000)
+                            explosionEntity.removeFromParent()
+                        } catch {
+                            print("Error cargando el efecto 'Explosion': \(error)")
+                        }
+                    }
                 default:
                     break
                 }
                 
-                // Elimina la entidad inmediatamente
+                // Finalmente, eliminamos el globo
                 tappedEntity.removeFromParent()
             }
     }
