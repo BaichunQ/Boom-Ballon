@@ -1,0 +1,13 @@
+{
+  "data" : [
+    {
+      "filename" : "billiard_hall_4k 1.exr",
+      "idiom" : "vision",
+      "universal-type-identifier" : "com.ilm.openexr-image"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

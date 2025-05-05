@@ -3,102 +3,104 @@ import RealityKit
 import RealityKitContent
 import UIKit
 
-struct BombStatusComponent: Component {
-    var exploded: Bool = false
-}
-
-// Define el componente que almacenará la Task de eliminación.
-struct RemovalTaskComponent: Component {
-    var task: Task<Void, Never>
-}
-
-// Extensión a Entity para agregar la propiedad removalTask
-extension Entity {
-    var removalTask: Task<Void, Never>? {
-        get { self.components[RemovalTaskComponent.self]?.task }
-        set {
-            if let newValue = newValue {
-                self.components.set(RemovalTaskComponent(task: newValue))
-            }
-        }
-    }
-}
-extension Entity {
-    /// Aplica el componente a la entidad y a todos sus hijos de forma recursiva.
-    func propagate<T: Component>(component: T) {
-        self.components.set(component)
-        for child in self.children {
-            child.propagate(component: component)
-        }
-    }
-}
-
-struct BalloonTypeComponent: Component {
-    var type: String
-}
-
 struct Globos: View {
-    
-    // Define el componente para indicar el tipo de globo (rojo, amarillo, bomba)
-   
-    
-    
-    
-    // Define el componente para marcar la invulnerabilidad temporal del globo
     struct InvulnerabilityComponent: Component {
         var isInvulnerable: Bool = true
     }
-    @State private var record: Int = 0
-    @State private var score: Int = 0
-    @State private var timeRemaining: Int = 120
+
+    @Binding var score: Int
+    @Binding var timeRemaining: Int
+    @Binding var record: Int
     @State private var currentContent: RealityViewContent? = nil
-    
-    // Arreglo para almacenar los cañones
+    @State private var showScene: Bool = true
     @State private var cannonEntities: [Entity] = []
+    @State private var skyboxEntity: ModelEntity?
+    @State private var contentLoaded: Bool = false
+    @EnvironmentObject var settings: AppSettings
+
     
     var body: some View {
-        ZStack(alignment: .top) {
-            RealityView { content in
-                let contentCopy = content  // Hacemos copia de 'content'
-                if currentContent == nil {
-                    currentContent = contentCopy
-                    Task {
-                        await loadCannons(in: contentCopy)
-                        await startGeneratingBalloons(in: contentCopy)
+        
+            ZStack(alignment: .top) {
+                if showScene {
+                    RealityView { content in
+                        // Guarda la referencia al content si aún no se hizo
+                        if currentContent == nil {
+                            let contentCopy = content
+                                currentContent = contentCopy
+                                Task {
+                                    await loadCannons(in: contentCopy)
+                                    await startGeneratingBalloons(in: contentCopy)
+                                    await AvionLoader.continuouslySpawnAvions(to: contentCopy)
+                                }
+                        }
+                        
+                        // Manejo del skybox utilizando la referencia almacenada
+                        if settings.isSkyboxActive {
+                            // Si no existe aún el skybox, lo creamos y lo agregamos
+                            if skyboxEntity == nil, let newSkybox = createSkybox() {
+                                newSkybox.name = "skyboxEntity"
+                                skyboxEntity = newSkybox
+                                content.add(newSkybox)
+                            }
+                        } else {
+                            // Si se desactiva el skybox, lo removemos si existe
+                            if let existingSkybox = skyboxEntity {
+                                existingSkybox.removeFromParent()
+                                skyboxEntity = nil
+                            }
+                        }
+
+
                     }
+                    
+                    .gesture(tapGesture)
                 }
+                /*
+                // Interfaz de usuario de puntaje, tiempo, etc.
+                VStack {
+                    HStack {
+                        Text("Globos: \(score)")
+                            .font(.system(size: 50, weight: .bold))
+                            .padding(16)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                        Spacer()
+                        Text("Tiempo: \(timeString(time: timeRemaining))")
+                            .font(.system(size: 50, weight: .bold))
+                            .padding(16)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                        Spacer()
+                        Text("Puntos Récord: \(record)")
+                            .font(.system(size: 50, weight: .bold))
+                            .padding(16)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                    }
+                    .padding()
+                }*/
             }
-            .gesture(tapGesture)
-            
-            // Interfaz de usuario para puntaje, tiempo y récord
-            VStack {
-                HStack {
-                    Text("Globos: \(score)")
-                        .font(.system(size: 50, weight: .bold))
-                        .padding(16)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                    Spacer()
-                    Text("Tiempo: \(timeString(time: timeRemaining))")
-                        .font(.system(size: 50, weight: .bold))
-                        .padding(16)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                    Spacer()
-                    Text("Puntos Récord: \(record)")
-                        .font(.system(size: 50, weight: .bold))
-                        .padding(16)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                }
-                .padding()
-                Spacer()
-            }
+            .onAppear { startCountdown() }
         }
-        .onAppear { startCountdown() }
+    
+    // MARK: - Skybox
+    
+    private func createSkybox() -> ModelEntity? {
+        let sphere = MeshResource.generateSphere(radius: 2)
+        var material = UnlitMaterial()
+        do {
+            let texture = try TextureResource.load(named: "test")
+            material.color = .init(texture: .init(texture))
+        } catch {
+            print("Error al cargar la textura del skybox: \(error.localizedDescription)")
+            return nil
+        }
+        let modelEntity = ModelEntity(mesh: sphere, materials: [material])
+        // Escala invertida para que la textura se vea desde el interior
+        modelEntity.scale = SIMD3<Float>(-10, 10, 10)
+        return modelEntity
     }
-    
-    
     
     // MARK: - Cañones
     
@@ -138,7 +140,7 @@ struct Globos: View {
                 await generateBalloons(for: cannon, in: content)
             }
         }
-    }
+    } 
     
     private func generateBalloons(for cannon: Entity, in content: RealityViewContent) async {
         while true {
@@ -199,7 +201,8 @@ struct Globos: View {
             content.add(balloon)
             
             // Lanza la animación del globo referenciando el cañón
-            Task {
+            Task { [weak balloon] in
+                guard let balloon = balloon else { return }
                 await animateBalloon(entity: balloon, relativeTo: cannon)
             }
             scheduleBalloonRemoval(entity: balloon, after: 3)
@@ -238,8 +241,9 @@ struct Globos: View {
             balloon.move(to: balloonTransform, relativeTo: nil)
             content.add(balloon)
             
-            Task {
-                await animateSpecialBalloon(entity: balloon, relativeTo: cannon)
+            Task { [weak balloon] in
+                guard let balloon = balloon else { return }
+                await animateBalloon(entity: balloon, relativeTo: cannon)
             }
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
@@ -251,13 +255,12 @@ struct Globos: View {
             balloon.generateCollisionShapes(recursive: true)
             balloon.components.set(InputTargetComponent())
             balloon.components.set(PhysicsBodyComponent(massProperties: .default,
-                                                         material: nil,
-                                                         mode: .kinematic))
+                                                        material: nil,
+                                                        mode: .kinematic))
             let typeComponent = BalloonTypeComponent(type: "bomba")
             balloon.propagate(component: typeComponent)
             
-            // Asigna el componente de estado para bombas (por defecto exploded = false)
-            balloon.components.set(BombStatusComponent())
+
             
             let canonPosition = cannon.position(relativeTo: nil)
             let spawnYOffset: Float = 0.5
@@ -270,13 +273,14 @@ struct Globos: View {
             balloon.move(to: balloonTransform, relativeTo: nil)
             content.add(balloon)
             
-            Task {
-                await animateSpecialBalloon(entity: balloon, relativeTo: cannon)
+            Task { [weak balloon] in
+                guard let balloon = balloon else { return }
+                await animateBalloon(entity: balloon, relativeTo: cannon)
             }
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
     }
-
+    
     
     // MARK: - Animaciones y Eliminación de Globos (Ejemplos Directos)
     
@@ -338,33 +342,37 @@ struct Globos: View {
     }
     
     func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval = 3) {
-        Task {
+        Task { [weak entity] in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             await MainActor.run {
-                // En este caso, no aplicamos ninguna penalización:
-                entity.removeFromParent()
+                entity?.removeFromParent()
             }
         }
     }
-
+    
     
     // MARK: - Temporizador
     
     func startCountdown() {
         Task {
-            while true {
-                while timeRemaining > 0 {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    await MainActor.run { timeRemaining -= 1 }
-                }
+            // Bucle para decrementar el tiempo hasta cero.
+            while timeRemaining > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
-                    if score > record { record = score }
-                    score = 0
-                    timeRemaining = 120
+                    timeRemaining -= 1
                 }
             }
+            
+            // Una vez terminado el tiempo, actualiza el récord (si es necesario)
+            await MainActor.run {
+                if score > record {
+                    record = score
+                }
+            }
+            
         }
     }
+
     
     // MARK: - Utilidades
     
@@ -382,53 +390,42 @@ struct Globos: View {
             .onEnded { tap in
                 let tappedEntity = tap.entity
                 
-                // Se obtiene el componente tipo; en tu caso BalloonTypeComponent
+                // Obtenemos el componente que indica el tipo del globo
                 guard let balloonType = tappedEntity.components[BalloonTypeComponent.self] else {
                     print("El globo no tiene un tipo definido")
                     tappedEntity.removeFromParent()
                     return
                 }
                 
+                // Actualizamos el puntaje según el tipo de globo
                 switch balloonType.type {
                 case "amarillo":
                     score += 3
                 case "rojo":
                     score += 1
                 case "bomba":
-                    // Resta 10 puntos sin bajar de 0.
                     score = max(0, score - 10)
-
-                    Task {
-                        do {
-                            let explosionEntity = try await ModelEntity.loadModel(named: "Explosion")
-                            // Posiciona la explosión en la misma ubicación que el globo explotado.
-                            explosionEntity.position = tappedEntity.position(relativeTo: nil)
-                            
-                            // Si el globo está anclado, lo agregamos a ese anchor.
-                            if let anchor = tappedEntity.anchor {
-                                anchor.addChild(explosionEntity)
-                            }
-                            // Sino, intentamos agregarlo al padre de la entidad tapada.
-                            else if let parent = tappedEntity.parent {
-                                parent.addChild(explosionEntity)
-                            }
-                            // Como última opción, lo añadimos a la propia entidad (aunque se removerá junto con ella).
-                            else {
-                                tappedEntity.addChild(explosionEntity)
-                            }
-                            
-                            // Deja visible el efecto durante 2 segundos.
-                            try await Task.sleep(nanoseconds: 2_000_000_000)
-                            explosionEntity.removeFromParent()
-                        } catch {
-                            print("Error cargando el efecto 'Explosion': \(error)")
-                        }
-                    }
                 default:
                     break
                 }
                 
-                // Finalmente, eliminamos el globo
+                // Obtenemos la posición actual del globo
+                let position = tappedEntity.position(relativeTo: nil)
+                if let content = currentContent {
+                    Task {
+                        if balloonType.type == "bomba" {
+                            await playBombExplosionEffect(at: position, in: content)
+                        } else if balloonType.type == "amarillo" {
+                            // Para globos amarillos, cargamos el efecto "Brillos"
+                            await playBrillosEffect(at: position, in: content)
+                        } else {
+                            // Si es de otro tipo, usamos el efecto por defecto
+                            await playExplosionEffect(at: position, in: content)
+                        }
+                    }
+                }
+                
+                // Eliminamos el globo de la escena
                 tappedEntity.removeFromParent()
             }
     }
@@ -439,11 +436,93 @@ struct Globos: View {
             particleEntity.transform.translation = position
             content.add(particleEntity)
             
-            // Espera 2 segundos para que se vea el efecto, luego remueve la entidad.
+            // Espera 500 milisegundos para que se vea el efecto y luego lo elimina.
             try? await Task.sleep(nanoseconds: 500_000_000)
             await MainActor.run {
                 particleEntity.removeFromParent()
             }
         }
     }
+    
+    func playBombExplosionEffect(at position: SIMD3<Float>, in content: RealityViewContent) async {
+        if let explosionEntity = try? await Entity.load(named: "Explosion") {
+            print("Explosion cargada correctamente.")  // Depuración
+            explosionEntity.name = "Explosion"
+            explosionEntity.transform.translation = position
+            content.add(explosionEntity)
+            
+            if let animation = explosionEntity.availableAnimations.first {
+                explosionEntity.playAnimation(animation, transitionDuration: 0, startsPaused: false)
+                // Asumimos a modo de ejemplo que la animación dura 1 segundo
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            } else {
+                // Si no tiene animación, lo mostramos por 300ms
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+            
+            await MainActor.run {
+                explosionEntity.removeFromParent()
+            }
+        } else {
+            print("No se pudo cargar el modelo 'Explosion'")
+        }
+    }
+    
+    func playBrillosEffect(at position: SIMD3<Float>, in content: RealityViewContent) async {
+        if let brillosEntity = try? await Entity.load(named: "Brillos") {
+            brillosEntity.name = "Brillos"
+            // Posicionar el efecto en el punto del touch.
+            brillosEntity.transform.translation = position
+            content.add(brillosEntity)
+            
+            // Si el modelo tiene alguna animación, se reproduce de inmediato
+            if let animation = brillosEntity.availableAnimations.first {
+                brillosEntity.playAnimation(animation, transitionDuration: 0, startsPaused: false)
+                // Asumimos que la animación dura, por ejemplo, 0.8 segundos (800 millones de nanosegundos)
+                try? await Task.sleep(nanoseconds: 800_000_000)
+            } else {
+                // En caso de no tener animación, se muestra brevemente (300ms)
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+            
+            await MainActor.run {
+                brillosEntity.removeFromParent()
+            }
+        } else {
+            print("No se pudo cargar el modelo 'Brillos'")
+        }
+    }
 }
+
+
+// Define el componente que almacenará la Task de eliminación.
+struct RemovalTaskComponent: Component {
+    var task: Task<Void, Never>
+}
+
+// Extensión a Entity para agregar la propiedad removalTask
+extension Entity {
+    var removalTask: Task<Void, Never>? {
+        get { self.components[RemovalTaskComponent.self]?.task }
+        set {
+            if let newValue = newValue {
+                self.components.set(RemovalTaskComponent(task: newValue))
+            }
+        }
+    }
+}
+extension Entity {
+    /// Aplica el componente a la entidad y a todos sus hijos de forma recursiva.
+    func propagate<T: Component>(component: T) {
+        self.components.set(component)
+        for child in self.children {
+            child.propagate(component: component)
+        }
+    }
+}
+
+struct BalloonTypeComponent: Component {
+    var type: String
+}
+
+
