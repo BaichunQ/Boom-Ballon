@@ -24,7 +24,7 @@ let rightTransform = Transform(
 // Transformación destino: posición a la izquierda
 let leftTransform = Transform(
     scale: SIMD3<Float>(0.03, 0.03, 0.03),
-    rotation: simd_quatf(angle: leftAngleRadians, axis: SIMD3<Float>(0, 1, 0)),
+    rotation: simd_quatf(angle: rightAngleRadians, axis: SIMD3<Float>(0, 1, 0)),
     translation: SIMD3<Float>(-3, 2, -3)
 )
 

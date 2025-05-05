@@ -17,6 +17,7 @@ struct Globos: View {
     @State private var skyboxEntity: ModelEntity?
     @State private var contentLoaded: Bool = false
     @EnvironmentObject var settings: AppSettings
+    @State private var creatingBallons: Bool = false
 
     
     var body: some View {
@@ -140,10 +141,10 @@ struct Globos: View {
                 await generateBalloons(for: cannon, in: content)
             }
         }
-    } 
+    }
     
     private func generateBalloons(for cannon: Entity, in content: RealityViewContent) async {
-        while true {
+        while creatingBallons {
             let probability = Int.random(in: 0..<100)
             if probability < 80 {
                 // 80% de probabilidad: globo rojo
@@ -286,7 +287,7 @@ struct Globos: View {
     
     // Función para animar globos básicos
     func animateBalloon(entity: Entity, relativeTo reference: Entity?) async {
-        while true {
+       
             let duration = TimeInterval.random(in: 2...4)
             let moveUp = Transform(
                 scale: SIMD3<Float>(1, 1, 1),
@@ -303,17 +304,12 @@ struct Globos: View {
                 )
             )
             entity.move(to: moveUp, relativeTo: reference, duration: duration, timingFunction: .easeInOut)
-            do {
-                try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-            } catch {
-                break
-            }
-        }
+
     }
     
     // Función para animar globos especiales
     func animateSpecialBalloon(entity: Entity, relativeTo reference: Entity?) async {
-        while true {
+       
             var duration = TimeInterval.random(in: 2...3)
             if entity.name.contains("Bomba") {
                 duration = 5
@@ -333,12 +329,7 @@ struct Globos: View {
                 )
             )
             entity.move(to: moveUp, relativeTo: reference, duration: duration, timingFunction: .easeInOut)
-            do {
-                try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-            } catch {
-                break
-            }
-        }
+
     }
     
     func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval = 3) {
@@ -356,6 +347,7 @@ struct Globos: View {
     func startCountdown() {
         Task {
             // Bucle para decrementar el tiempo hasta cero.
+            creatingBallons=true
             while timeRemaining > 0 {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
@@ -365,6 +357,7 @@ struct Globos: View {
             
             // Una vez terminado el tiempo, actualiza el récord (si es necesario)
             await MainActor.run {
+                creatingBallons = false
                 if score > record {
                     record = score
                 }
