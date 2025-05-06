@@ -13,6 +13,7 @@ let rightAngleDegrees: Float = 90
 let leftAngleDegrees: Float = 270
 var rightAngleRadians = rightAngleDegrees * .pi / 180
 var leftAngleRadians = leftAngleDegrees * .pi / 180
+var spawnAviones: Bool = true
 
 // Transformación de inicio: posición a la derecha
 let rightTransform = Transform(
@@ -46,9 +47,9 @@ struct AvionLoader {
     /// Genera de forma continua aviones. Entre cada generación se espera un tiempo aleatorio (entre 4 y 10 segundos).
     static func continuouslySpawnAvions(to content: RealityViewContent) async {
         // Bucle infinito para generar aviones continuamente
-        while true {
+        while spawnAviones {
             // Tiempo de espera aleatorio entre 4 y 10 segundos (en nanosegundos)
-            let randomDelay = UInt64.random(in: 4_000_000_000...10_000_000_000)
+            let randomDelay = UInt64.random(in: 3_000_000_000...3_000_000_000)
             try? await Task.sleep(nanoseconds: randomDelay)
             
             do {
@@ -62,6 +63,8 @@ struct AvionLoader {
             }
         }
     }
+    
+    
     
     /// Anima el avión para que se mueva en línea recta (de derecha a izquierda) y, tras completar la animación, lo elimina.
     static func animateAvion(_ avion: Entity) async {
@@ -90,5 +93,9 @@ struct AvionLoader {
         } catch {
             print("Error al cargar el modelo Avion: \(error.localizedDescription)")
         }
+    }
+    
+    static func changeSpawnAviones(_ value: Bool) {
+        spawnAviones = value
     }
 }

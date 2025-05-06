@@ -7,7 +7,7 @@ struct Globos: View {
     struct InvulnerabilityComponent: Component {
         var isInvulnerable: Bool = true
     }
-
+    @State private var collisionSubscription: EventSubscription?
     @Binding var score: Int
     @Binding var timeRemaining: Int
     @Binding var record: Int
@@ -51,7 +51,17 @@ struct Globos: View {
                                 skyboxEntity = nil
                             }
                         }
-
+                        // Dentro del closure de RealityView, luego de haber agregado las entidades a la escena:
+                        collisionSubscription = content.subscribe(to: CollisionEvents.Began.self) { event in
+                           if event.entityA.name == "Avion" && event.entityB.components.has(BalloonTypeComponent.self) {
+                               print("El avión colisionó con un globo")
+                               event.entityB.removeFromParent()
+                           } else if event.entityB.name == "Avion" && event.entityA.components.has(BalloonTypeComponent.self) {
+                               print("El avión colisionó con un globo")
+                               event.entityA.removeFromParent()
+                           }
+                       }
+                           
 
                     }
                     
@@ -138,6 +148,7 @@ struct Globos: View {
         // Para cada cañón, se lanza una tarea independiente
         for cannon in cannonEntities {
             Task {
+                creatingBallons = true
                 await generateBalloons(for: cannon, in: content)
             }
         }
@@ -159,7 +170,7 @@ struct Globos: View {
                 try? await Task.sleep(nanoseconds: delay)
             } else {
                 // 15% de probabilidad: globo bomba
-                await createBoomBalloon(from: cannon, in: content)
+                //await createBoomBalloon(from: cannon, in: content)
                 let delay = UInt64.random(in: 3_000_000_000...4_000_000_000)
                 try? await Task.sleep(nanoseconds: delay)
             }
@@ -202,10 +213,7 @@ struct Globos: View {
             content.add(balloon)
             
             // Lanza la animación del globo referenciando el cañón
-            Task { [weak balloon] in
-                guard let balloon = balloon else { return }
-                await animateBalloon(entity: balloon, relativeTo: cannon)
-            }
+            await animateBalloon(entity: balloon, relativeTo: cannon)
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
     }
@@ -241,11 +249,9 @@ struct Globos: View {
             )
             balloon.move(to: balloonTransform, relativeTo: nil)
             content.add(balloon)
-            
-            Task { [weak balloon] in
-                guard let balloon = balloon else { return }
+
                 await animateBalloon(entity: balloon, relativeTo: cannon)
-            }
+
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
     }
@@ -273,11 +279,9 @@ struct Globos: View {
             )
             balloon.move(to: balloonTransform, relativeTo: nil)
             content.add(balloon)
-            
-            Task { [weak balloon] in
-                guard let balloon = balloon else { return }
+
                 await animateBalloon(entity: balloon, relativeTo: cannon)
-            }
+
             scheduleBalloonRemoval(entity: balloon, after: 3)
         }
     }
@@ -304,7 +308,6 @@ struct Globos: View {
                 )
             )
             entity.move(to: moveUp, relativeTo: reference, duration: duration, timingFunction: .easeInOut)
-
     }
     
     // Función para animar globos especiales
@@ -329,17 +332,27 @@ struct Globos: View {
                 )
             )
             entity.move(to: moveUp, relativeTo: reference, duration: duration, timingFunction: .easeInOut)
-
     }
     
-    func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval = 3) {
-        Task { [weak entity] in
+    func scheduleBalloonRemoval(entity: Entity, after seconds: TimeInterval) {
+        // Capturamos una referencia fuerte a la entidad en el momento de la llamada.
+        let strongEntity = entity
+        Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             await MainActor.run {
-                entity?.removeFromParent()
+                // Solo eliminamos si la entidad aún está en la jerarquía.
+                
+                if strongEntity.parent != nil {
+                    
+                    strongEntity.removeFromParent()
+                }
             }
         }
     }
+
+
+    
+    
     
     
     // MARK: - Temporizador
@@ -358,6 +371,7 @@ struct Globos: View {
             // Una vez terminado el tiempo, actualiza el récord (si es necesario)
             await MainActor.run {
                 creatingBallons = false
+                AvionLoader.changeSpawnAviones(false)
                 if score > record {
                     record = score
                 }
