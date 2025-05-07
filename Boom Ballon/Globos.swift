@@ -26,6 +26,29 @@ struct Globos: View {
                 if showScene {
                     RealityView { content in
                         // Guarda la referencia al content si aún no se hizo
+                        if collisionSubscription == nil {
+                            collisionSubscription = content.subscribe(to: CollisionEvents.Began.self) { event in
+                                // Este bloque se ejecuta cada vez que ocurre un evento de colisión.
+                                Task { @MainActor in
+                                    // Identifica la colisión entre el avión y el globo
+                                    let balloonEntity: Entity? = {
+                                        if event.entityA.name.contains("Avion") && event.entityB.components.has(BalloonTypeComponent.self) {
+                                            return event.entityB
+                                        } else if event.entityB.name.contains("Avion") && event.entityA.components.has(BalloonTypeComponent.self) {
+                                            return event.entityA
+                                        }
+                                        return nil
+                                    }()
+                                    
+                                    if let balloon = balloonEntity, balloon.parent != nil {
+                                        // Este código se ejecuta en cada colisión válida
+                                        print("Colisión detectada: eliminando globo \(balloon.name)")
+                                        balloon.removeFromParent()
+                                    }
+                                }
+                            }
+                        }
+
                         if currentContent == nil {
                             let contentCopy = content
                                 currentContent = contentCopy
@@ -52,15 +75,6 @@ struct Globos: View {
                             }
                         }
                         // Dentro del closure de RealityView, luego de haber agregado las entidades a la escena:
-                        collisionSubscription = content.subscribe(to: CollisionEvents.Began.self) { event in
-                           if event.entityA.name == "Avion" && event.entityB.components.has(BalloonTypeComponent.self) {
-                               print("El avión colisionó con un globo")
-                               event.entityB.removeFromParent()
-                           } else if event.entityB.name == "Avion" && event.entityA.components.has(BalloonTypeComponent.self) {
-                               print("El avión colisionó con un globo")
-                               event.entityA.removeFromParent()
-                           }
-                       }
                            
 
                     }
@@ -343,7 +357,6 @@ struct Globos: View {
                 // Solo eliminamos si la entidad aún está en la jerarquía.
                 
                 if strongEntity.parent != nil {
-                    
                     strongEntity.removeFromParent()
                 }
             }
@@ -364,7 +377,11 @@ struct Globos: View {
             while timeRemaining > 0 {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
-                    timeRemaining -= 1
+                    if(timeRemaining>0){
+                        timeRemaining -= 1
+                    } else{
+                        creatingBallons = false
+                    }
                 }
             }
             
@@ -375,6 +392,7 @@ struct Globos: View {
                 if score > record {
                     record = score
                 }
+                score = 0
             }
             
         }

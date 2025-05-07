@@ -31,7 +31,7 @@ let leftTransform = Transform(
 
 struct AvionLoader {
     
-    /// Carga el modelo "Avion" y lo configura
+   /* /// Carga el modelo "Avion" y lo configura
     static func loadAvion() async throws -> Entity {
         // Se asume que tienes "Avion.usdz" en tus assets.
         let avion = try await ModelEntity.load(named: "Avion")
@@ -43,7 +43,7 @@ struct AvionLoader {
         
         return avion
     }
-    
+    */
     /// Genera de forma continua aviones. Entre cada generación se espera un tiempo aleatorio (entre 4 y 10 segundos).
     static func continuouslySpawnAvions(to content: RealityViewContent) async {
         // Bucle infinito para generar aviones continuamente
@@ -54,8 +54,13 @@ struct AvionLoader {
             
             do {
                 // Crea y añade el avión
-                let avion = try await loadAvion()
+                let avion = try await ModelEntity.load(named: "Avion")
                 content.add(avion)
+                avion.name = "Avion"
+                await avion.generateCollisionShapes(recursive: true)
+                
+                // Configuración inicial: coloca el avión en la posición de inicio (rightTransform)
+                avion.transform = rightTransform
                 // Anima el avión (se moverá de derecha a izquierda y se eliminará al finalizar)
                 await animateAvion(avion)
             } catch {
@@ -82,18 +87,13 @@ struct AvionLoader {
             print("Error en la animación del avión: \(error)")
         }
         // Elimina el avión de la escena
-        await avion.removeFromParent()
+        await MainActor.run {
+            avion.removeFromParent()
+        }
     }
     
     /// Una función de conveniencia para agregar un avión sin animarlo.
-    static func addAvion(to content: RealityViewContent) async {
-        do {
-            let avion = try await loadAvion()
-            content.add(avion)
-        } catch {
-            print("Error al cargar el modelo Avion: \(error.localizedDescription)")
-        }
-    }
+
     
     static func changeSpawnAviones(_ value: Bool) {
         spawnAviones = value
