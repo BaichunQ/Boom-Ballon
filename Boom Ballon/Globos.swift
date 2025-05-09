@@ -2,22 +2,26 @@ import SwiftUI
 import RealityKit
 import RealityKitContent
 import UIKit
+  
+//private var gameManager.creatingBallons: Bool = false
+private var currentContent: RealityViewContent? = nil
+private var showScene: Bool = true
+private var cannonEntities: [Entity] = []
+private var skyboxEntity: ModelEntity?
+private var contentLoaded: Bool = false
 
 struct Globos: View {
     struct InvulnerabilityComponent: Component {
         var isInvulnerable: Bool = true
     }
     @State private var collisionSubscription: EventSubscription?
+    @EnvironmentObject var gameManager: GameManager
+
+
     @Binding var score: Int
     @Binding var timeRemaining: Int
     @Binding var record: Int
-    @State private var currentContent: RealityViewContent? = nil
-    @State private var showScene: Bool = true
-    @State private var cannonEntities: [Entity] = []
-    @State private var skyboxEntity: ModelEntity?
-    @State private var contentLoaded: Bool = false
     @EnvironmentObject var settings: AppSettings
-    @State private var creatingBallons: Bool = false
 
     
     var body: some View {
@@ -106,7 +110,7 @@ struct Globos: View {
                     .padding()
                 }*/
             }
-            .onAppear { startCountdown() }
+           // .onAppear { startCountdown() }
         }
     
     // MARK: - Skybox
@@ -162,14 +166,14 @@ struct Globos: View {
         // Para cada cañón, se lanza una tarea independiente
         for cannon in cannonEntities {
             Task {
-                creatingBallons = true
+                gameManager.creatingBallons = true
                 await generateBalloons(for: cannon, in: content)
             }
         }
     }
     
     private func generateBalloons(for cannon: Entity, in content: RealityViewContent) async {
-        while creatingBallons {
+        while gameManager.creatingBallons {
             let probability = Int.random(in: 0..<100)
             if probability < 80 {
                 // 80% de probabilidad: globo rojo
@@ -369,25 +373,25 @@ struct Globos: View {
     
     
     // MARK: - Temporizador
-    
+   /*
     func startCountdown() {
         Task {
             // Bucle para decrementar el tiempo hasta cero.
-            creatingBallons=true
+            gameManager.creatingBallons=true
             while timeRemaining > 0 {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
                     if(timeRemaining>0){
                         timeRemaining -= 1
                     } else{
-                        creatingBallons = false
+                        gameManager.creatingBallons = false
                     }
                 }
             }
             
             // Una vez terminado el tiempo, actualiza el récord (si es necesario)
             await MainActor.run {
-                creatingBallons = false
+                gameManager.creatingBallons = false
                 AvionLoader.changeSpawnAviones(false)
                 if score > record {
                     record = score
@@ -397,7 +401,20 @@ struct Globos: View {
             
         }
     }
-
+    /// Función para reiniciar el juego: muestra la cuenta, reinicia valores y reactiva el countdown.
+    func restartGame() async {
+        // Luego, en el hilo principal, reinicia las variables del juego.
+        await MainActor.run {
+            timeRemaining = 120   // Restablece el tiempo a 120 segundos.
+            score = 0             // Reinicia la puntuación.
+            gameManager.creatingBallons = true // Reactiva la generación de globos.
+            // Si manejas otros spawns (por ejemplo, aviones), reactívalos aquí.
+        }
+        
+        // Lanza de nuevo el countdown sin await para que se maneje de forma asíncrona.
+        startCountdown()
+    }
+*/
     
     // MARK: - Utilidades
     

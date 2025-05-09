@@ -14,7 +14,7 @@ struct Boom_BallonApp: App {
     @State private var appModel = AppModel()
     @State private var avPlayerViewModel = AVPlayerViewModel()
     @StateObject var settings = AppSettings()
-
+    @StateObject private var gameManager = GameManager()
     // Variables de estado compartidas para la puntuación
     @State private var score: Int = 0
     @State private var timeRemaining: Int = 120
@@ -27,9 +27,10 @@ struct Boom_BallonApp: App {
                     .environmentObject(settings) // Inyectamos en AVPlayerView si lo usa
             } else {
                 // Pasamos los bindings a ContentView
-                ContentView(score: $score, timeRemaining: $timeRemaining, record: $record)
+                ContentView(score: $score, record: $record)
                     .environment(appModel)
                     .environmentObject(settings)
+                    .environmentObject(gameManager)
             }
         }
         .defaultSize(width: 1200, height: 300)
@@ -38,6 +39,8 @@ struct Boom_BallonApp: App {
         ImmersiveSpace(id: "Globos") {
             Globos(score: $score, timeRemaining: $timeRemaining, record: $record)
                 .environmentObject(settings)
+                .environmentObject(gameManager)
+            
         }
         
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
